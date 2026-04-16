@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude model comparison</title>
+<style>
+  :root {
+    --bg: #faf9f7;
+    --surface: #ffffff;
+    --border: rgba(0, 0, 0, 0.1);
+    --border-strong: rgba(0, 0, 0, 0.2);
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-subtle: #999;
+    --haiku: #1D9E75;
+    --sonnet: #534AB7;
+    --opus: #D85A30;
+    --info-bg: #E6F1FB;
+    --info-text: #0C447C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --surface: #242424;
+      --border: rgba(255, 255, 255, 0.1);
+      --border-strong: rgba(255, 255, 255, 0.2);
+      --text: #f0f0f0;
+      --text-muted: #a8a8a8;
+      --text-subtle: #707070;
+      --info-bg: rgba(55, 138, 221, 0.15);
+      --info-text: #85B7EB;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 2rem 1rem;
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 {
+    font-size: 24px;
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0 0 2rem;
+  }
+  .input-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    resize: vertical;
+  }
+  textarea:focus { outline: 2px solid var(--info-text); outline-offset: -1px; }
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .max-tokens {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .max-tokens input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+  }
+  button {
+    padding: 8px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    border: 0.5px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--text);
+    color: var(--bg);
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .example-chip {
+    background: transparent;
+    color: var(--text-muted);
+    border: 0.5px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .example-chip:hover { color: var(--text); border-color: var(--border-strong); }
+  .results {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (max-width: 800px) {
+    .results { grid-template-columns: 1fr; }
+  }
+  .result-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+  }
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .model-name { font-size: 15px; font-weight: 500; }
+  .model-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .stat {
+    text-align: center;
+    padding: 6px;
+    background: var(--bg);
+    border-radius: 6px;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .stat-value {
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .response-text {
+    font-size: 13px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    flex: 1;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-top: 4px;
+  }
+  .empty {
+    color: var(--text-subtle);
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+    padding: 2rem 0;
+  }
+  .error {
+    color: #E24B4A;
+    font-size: 13px;
+    padding: 12px;
+    background: rgba(226, 75, 74, 0.08);
+    border-radius: 6px;
+  }
+  .loading {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--border-strong);
+    border-top-color: var(--text);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .footer {
+    margin-top: 2rem;
+    font-size: 12px;
+    color: var(--text-subtle);
+    text-align: center;
+  }
+  .footer a { color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Claude model comparison</h1>
+  <p class="subtitle">Send the same prompt to Haiku 4.5, Sonnet 4.6, and Opus 4.7. See latency, cost, and output side by side.</p>
+
+  <div class="input-card">
+    <label for="prompt">Your prompt</label>
+    <textarea id="prompt" placeholder="Type a prompt to compare across all three models..."></textarea>
+
+    <div class="controls">
+      <button id="run-btn">Run comparison</button>
+      <div class="max-tokens">
+        <label for="max-tokens" style="margin: 0;">Max output tokens</label>
+        <input type="number" id="max-tokens" value="1024" min="64" max="8192" step="64" />
+      </div>
+    </div>
+
+    <div class="examples">
+      <button class="example-chip" data-example="Classify this support ticket as: billing, technical, or feature request. Respond with only the category. Ticket: 'My subscription auto-renewed but I cancelled last week.'">Classification</button>
+      <button class="example-chip" data-example="Write a Python function that takes a list of integers and returns the second largest unique value. Handle edge cases.">Coding</button>
+      <button class="example-chip" data-example="Explain why the Riemann hypothesis matters, in 3 short paragraphs aimed at a curious non-mathematician.">Explanation</button>
+      <button class="example-chip" data-example="A company has $2.4M in ARR growing 8% MoM, with 75% gross margin and $180k monthly burn. At what month do they reach break-even? Show your reasoning.">Reasoning</button>
+    </div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-card"><div class="empty">Haiku 4.5 — run a prompt to see output</div></div>
+    <div class="result-card"><div class="empty">Sonnet 4.6 — run a prompt to see output</div></div>
+    <div class="result-card"><div class="empty">Opus 4.7 — run a prompt to see output</div></div>
+  </div>
+
+  <p class="footer">Pricing shown per request, calculated from Anthropic's published rates. Your API key stays on the server.</p>
+</div>
+
+<script>
+  const MODEL_COLORS = {
+    "Haiku 4.5": "var(--haiku)",
+    "Sonnet 4.6": "var(--sonnet)",
+    "Opus 4.7": "var(--opus)",
+  };
+
+  const promptEl = document.getElementById("prompt");
+  const runBtn = document.getElementById("run-btn");
+  const maxTokensEl = document.getElementById("max-tokens");
+  const resultsEl = document.getElementById("results");
+
+  document.querySelectorAll(".example-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      promptEl.value = chip.dataset.example;
+      promptEl.focus();
+    });
+  });
+
+  function renderLoading() {
+    const cards = ["Haiku 4.5", "Sonnet 4.6", "Opus 4.7"].map(
+      (name) => `
+        <div class="result-card">
+          <div class="result-header">
+            <span class="model-name"><span class="model-dot" style="background: ${MODEL_COLORS[name]};"></span>${name}</span>
+            <span class="loading"></span>
+          </div>
+          <div class="empty">Running…</div>
+        </div>`
+    );
+    resultsEl.innerHTML = cards.join("");
+  }
+
+  function fmtCost(n) {
+    if (n < 0.001) return "<$0.001";
+    return "$" + n.toFixed(4);
+  }
+  function fmtMs(ms) {
+    if (ms < 1000) return ms + "ms";
+    return (ms / 1000).toFixed(2) + "s";
+  }
+
+  function renderResults(results) {
+    resultsEl.innerHTML = results
+      .map((r) => {
+        const color = MODEL_COLORS[r.model] || "var(--text)";
+        if (!r.ok) {
+          return `
+            <div class="result-card">
+              <div class="result-header">
+                <span class="model-name"><span class="model-dot" style="background: ${color};"></span>${r.model}</span>
+              </div>
+              <div class="error">Error: ${escapeHtml(r.error)}</div>
+            </div>`;
+        }
+        return `
+          <div class="result-card">
+            <div class="result-header">
+              <span class="model-name"><span class="model-dot" style="background: ${color};"></span>${r.model}</span>
+            </div>
+            <div class="stats">
+              <div class="stat"><div class="stat-label">Latency</div><div class="stat-value">${fmtMs(r.elapsedMs)}</div></div>
+              <div class="stat"><div class="stat-label">Tokens</div><div class="stat-value">${r.inputTokens}/${r.outputTokens}</div></div>
+              <div class="stat"><div class="stat-label">Cost</div><div class="stat-value">${fmtCost(r.cost)}</div></div>
+            </div>
+            <div class="response-text">${escapeHtml(r.text)}</div>
+          </div>`;
+      })
+      .join("");
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  async function runComparison() {
+    const prompt = promptEl.value.trim();
+    if (!prompt) {
+      promptEl.focus();
+      return;
+    }
+    const maxTokens = parseInt(maxTokensEl.value, 10) || 1024;
+
+    runBtn.disabled = true;
+    runBtn.textContent = "Running…";
+    renderLoading();
+
+    try {
+      const res = await fetch("/api/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, maxTokens }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      renderResults(data.results);
+    } catch (err) {
+      resultsEl.innerHTML = `<div class="result-card" style="grid-column: 1 / -1;"><div class="error">${escapeHtml(err.message)}</div></div>`;
+    } finally {
+      runBtn.disabled = false;
+      runBtn.textContent = "Run comparison";
+    }
+  }
+
+  runBtn.addEventListener("click", runComparison);
+  promptEl.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") runComparison();
+  });
+</script>
+</body>
+</html>
