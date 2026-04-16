@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Model Comparison</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f13;
+      color: #e8e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ───────────────────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 2rem 1rem 1.25rem;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    header h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #a78bfa, #60a5fa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      margin-top: 0.4rem;
+      color: #8888aa;
+      font-size: 0.9rem;
+    }
+
+    /* ── Prompt area ──────────────────────────────────────────────────────── */
+    .prompt-section {
+      max-width: 800px;
+      margin: 2rem auto 0;
+      padding: 0 1rem;
+      width: 100%;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      border-radius: 10px;
+      color: #e8e8f0;
+      font-size: 0.95rem;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 100px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: #7c6aff; }
+
+    textarea::placeholder { color: #555577; }
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    button {
+      padding: 0.65rem 1.6rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.98); }
+
+    #submitBtn {
+      background: linear-gradient(135deg, #7c6aff, #5b5bf5);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    #submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #clearBtn {
+      background: #1e1e38;
+      color: #aaaacc;
+      border: 1px solid #2a2a4a;
+    }
+
+    /* ── Results grid ─────────────────────────────────────────────────────── */
+    .results {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      padding: 1.5rem 1.25rem 2.5rem;
+      max-width: 1400px;
+      margin: 1.5rem auto 0;
+      width: 100%;
+    }
+
+    @media (max-width: 900px) {
+      .results { grid-template-columns: 1fr; }
+    }
+
+    /* ── Model card ───────────────────────────────────────────────────────── */
+    .card {
+      background: #16162a;
+      border: 1px solid #252545;
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 360px;
+    }
+
+    .card-header {
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid #252545;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .model-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    /* Distinct accent per model */
+    .card:nth-child(1) .model-name { color: #34d399; }
+    .card:nth-child(2) .model-name { color: #60a5fa; }
+    .card:nth-child(3) .model-name { color: #a78bfa; }
+
+    .card:nth-child(1) { border-top: 2px solid #34d399; }
+    .card:nth-child(2) { border-top: 2px solid #60a5fa; }
+    .card:nth-child(3) { border-top: 2px solid #a78bfa; }
+
+    /* ── Metrics strip ────────────────────────────────────────────────────── */
+    .metrics {
+      display: flex;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .metric-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #666688;
+    }
+
+    .metric-value {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #ccccee;
+    }
+
+    /* ── Spinner ──────────────────────────────────────────────────────────── */
+    .spinner-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #252545;
+      border-top-color: #7c6aff;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Response text ────────────────────────────────────────────────────── */
+    .response-body {
+      flex: 1;
+      padding: 1rem 1.1rem 1.2rem;
+      overflow-y: auto;
+      max-height: 520px;
+    }
+
+    .response-body p {
+      line-height: 1.65;
+      font-size: 0.9rem;
+      color: #d0d0e8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── Error state ──────────────────────────────────────────────────────── */
+    .error-text {
+      color: #f87171;
+      font-size: 0.88rem;
+      font-style: italic;
+    }
+
+    /* ── Empty / placeholder state ────────────────────────────────────────── */
+    .placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #444466;
+      gap: 0.5rem;
+      padding: 2rem;
+    }
+
+    .placeholder svg { opacity: 0.35; }
+
+    .placeholder span { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Claude Model Comparison</h1>
+  <p>Send the same prompt to Haiku&nbsp;4.5, Sonnet&nbsp;4.5, and Opus&nbsp;4.5 simultaneously</p>
+</header>
+
+<section class="prompt-section">
+  <textarea id="prompt" placeholder="Enter your prompt here…" rows="4"></textarea>
+  <div class="btn-row">
+    <button id="submitBtn">Compare Models</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+</section>
+
+<section class="results" id="results">
+  <!-- Haiku -->
+  <article class="card" id="card-0">
+    <div class="card-header">
+      <span class="model-name">Claude Haiku 4.5</span>
+      <div class="metrics" id="metrics-0"></div>
+    </div>
+    <div class="placeholder" id="content-0">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span>Waiting for prompt…</span>
+    </div>
+  </article>
+
+  <!-- Sonnet -->
+  <article class="card" id="card-1">
+    <div class="card-header">
+      <span class="model-name">Claude Sonnet 4.5</span>
+      <div class="metrics" id="metrics-1"></div>
+    </div>
+    <div class="placeholder" id="content-1">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span>Waiting for prompt…</span>
+    </div>
+  </article>
+
+  <!-- Opus -->
+  <article class="card" id="card-2">
+    <div class="card-header">
+      <span class="model-name">Claude Opus 4.5</span>
+      <div class="metrics" id="metrics-2"></div>
+    </div>
+    <div class="placeholder" id="content-2">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span>Waiting for prompt…</span>
+    </div>
+  </article>
+</section>
+
+<script>
+  const submitBtn = document.getElementById('submitBtn');
+  const clearBtn  = document.getElementById('clearBtn');
+  const promptEl  = document.getElementById('prompt');
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function formatMs(ms) {
+    return ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : ms + ' ms';
+  }
+
+  function formatCost(usd) {
+    if (usd < 0.000001) return '< $0.000001';
+    return '$' + usd.toFixed(6);
+  }
+
+  function metricsHtml(data) {
+    return `
+      <div class="metric">
+        <span class="metric-label">Latency</span>
+        <span class="metric-value">${formatMs(data.latencyMs)}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">In tokens</span>
+        <span class="metric-value">${data.inputTokens.toLocaleString()}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Out tokens</span>
+        <span class="metric-value">${data.outputTokens.toLocaleString()}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Cost</span>
+        <span class="metric-value">${formatCost(data.costUsd)}</span>
+      </div>`;
+  }
+
+  function showSpinners() {
+    for (let i = 0; i < 3; i++) {
+      document.getElementById(`metrics-${i}`).innerHTML = '';
+      document.getElementById(`content-${i}`).outerHTML =
+        `<div class="spinner-wrap" id="content-${i}"><div class="spinner"></div></div>`;
+    }
+  }
+
+  function renderResult(index, data) {
+    const metricsEl  = document.getElementById(`metrics-${index}`);
+    const contentEl  = document.getElementById(`content-${index}`);
+
+    if (data.error) {
+      metricsEl.innerHTML = '';
+      contentEl.outerHTML = `<div class="response-body" id="content-${index}">
+        <p class="error-text">⚠ ${escapeHtml(data.error)}</p>
+      </div>`;
+    } else {
+      metricsEl.innerHTML = metricsHtml(data);
+      contentEl.outerHTML = `<div class="response-body" id="content-${index}">
+        <p>${escapeHtml(data.content)}</p>
+      </div>`;
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function resetCards() {
+    const labels = ['Claude Haiku 4.5', 'Claude Sonnet 4.5', 'Claude Opus 4.5'];
+    for (let i = 0; i < 3; i++) {
+      document.getElementById(`metrics-${i}`).innerHTML = '';
+      const cur = document.getElementById(`content-${i}`);
+      cur.outerHTML = `<div class="placeholder" id="content-${i}">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>Waiting for prompt…</span>
+      </div>`;
+    }
+  }
+
+  // ── Events ─────────────────────────────────────────────────────────────────
+
+  clearBtn.addEventListener('click', () => {
+    promptEl.value = '';
+    resetCards();
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    const prompt = promptEl.value.trim();
+    if (!prompt) {
+      promptEl.focus();
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Comparing…';
+    showSpinners();
+
+    try {
+      const res  = await fetch('/api/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      const { responses } = await res.json();
+      responses.forEach((data, i) => renderResult(i, data));
+    } catch (err) {
+      for (let i = 0; i < 3; i++) {
+        const contentEl = document.getElementById(`content-${i}`);
+        contentEl.outerHTML = `<div class="response-body" id="content-${i}">
+          <p class="error-text">⚠ ${escapeHtml(err.message)}</p>
+        </div>`;
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Compare Models';
+    }
+  });
+
+  // Allow Ctrl+Enter / Cmd+Enter to submit
+  promptEl.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      submitBtn.click();
+    }
+  });
+</script>
+</body>
+</html>
